@@ -56,6 +56,6 @@ class EmbeddingBlock(nn.Module):
             shape=(..., output_dim)
         """
         weight = self.weighting(atom_embed)     # (..., 1, B)
-        variations = self.multiExpert(input)    # (..., B, D)
-        mixture = weight @ variations           # (..., 1, D)
-        return self.fc(mixture)                 # (..., D)
+        variations = self.multiExpert(input)    # (..., B, output_dim)
+        mixture = weight @ variations           # (..., 1, output_dim)
+        return self.fc(mixture)                 # (..., output_dim)
