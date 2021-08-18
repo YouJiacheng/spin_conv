@@ -1,8 +1,8 @@
-from utils import rotation_to_z, repeat_tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from math import pi
+from .utils import rotation_to_z, repeat_tuple
 half_pi = pi / 2
 doub_pi = pi * 2
 
