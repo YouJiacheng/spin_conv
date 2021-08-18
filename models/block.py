@@ -29,7 +29,7 @@ class DistanceBlock(nn.Module):
         return d.div_(self.sigma).square_().exp_()
 
 class EmbeddingBlock(nn.Module):
-    def __init__(self, atom_embed_dim, input_dim, B, D):
+    def __init__(self, atom_embed_dim, input_dim, B, output_dim):
         super().__init__()
         self.weighting = nn.Sequential(
             nn.Linear(atom_embed_dim, B),
@@ -37,14 +37,14 @@ class EmbeddingBlock(nn.Module):
             nn.Unflatten(-1, (1, B))
         )
         self.multiExpert = nn.Sequential(
-            nn.Linear(input_dim, D),
+            nn.Linear(input_dim, output_dim),
             nn.ReLU(),
-            nn.Linear(D, B * D),
-            nn.Unflatten(-1, (B, D))
+            nn.Linear(output_dim, B * output_dim),
+            nn.Unflatten(-1, (B, output_dim))
         )
         self.fc = nn.Sequential(
             nn.Flatten(-2, -1),
-            nn.Linear(D, D)
+            nn.Linear(output_dim, output_dim)
         )
     
     def forward(self, atom_embed, input):
@@ -53,7 +53,7 @@ class EmbeddingBlock(nn.Module):
             atom_embed: 用于边时是source和target的onehot embedding concat, shape=(..., atom_embed_dim)
             input: shape=(..., input_dim)
         Returns:
-            shape=(..., D)
+            shape=(..., output_dim)
         """
         weight = self.weighting(atom_embed)     # (..., 1, B)
         variations = self.multiExpert(input)    # (..., B, D)
