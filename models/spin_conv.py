@@ -50,7 +50,7 @@ class GridSpinConv(nn.Module):
         r"""
         phi: 纬度离散化的格数
         theta: 经度离散化的格数
-        M: message hidden state的维数
+        M: message维数
         D: 输出维数
         """
         super().__init__()
