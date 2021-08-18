@@ -61,7 +61,7 @@ def axis_angle_to_quaternion(axis_angle):
     Returns:
         quaternions with real part first, as tensor of shape (..., 4).
     """
-    angles = torch.norm(axis_angle, p=2, dim=-1, keepdim=True)
+    angles = torch.linalg.norm(axis_angle, dim=-1, keepdim=True)
     half_angles = 0.5 * angles
     eps = 1e-6
     small_angles = angles.abs() < eps

@@ -19,13 +19,13 @@ class DistanceBlock(nn.Module):
     def forward(self, edge_type, edge_distance):
         r"""
         Args:
-            edge_type: 边类型向量 shape=(..., 1)
+            edge_type: 边类型向量 shape=(...)
             edge_distance: 边长度向量 shape=(..., 1)
         Returns:
             shape=(..., D)
         """
-        gain, offset = self.gain(edge_type), self.offset(edge_type)
-        d: torch.Tensor = gain * edge_distance + offset - self.mu # shape=(..., D)
+        gain, offset = self.gain(edge_type), self.offset(edge_type) # (..., 1), (..., 1)
+        d: torch.Tensor = gain * edge_distance + offset - self.mu # (..., D)
         return d.div_(self.sigma).square_().exp_()
 
 class EmbeddingBlock(nn.Module):
