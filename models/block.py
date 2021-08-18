@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 class DistanceBlock(nn.Module):
     def __init__(self, delta, D, sigma, edge_types):
@@ -20,12 +19,43 @@ class DistanceBlock(nn.Module):
     def forward(self, edge_type, edge_distance):
         r"""
         Args:
-            edge_type: 边类型向量 shape=(N, 1)
-            edge_distance: 边长度向量 shape=(N, 1)
+            edge_type: 边类型向量 shape=(..., 1)
+            edge_distance: 边长度向量 shape=(..., 1)
         Returns:
-            shape=(N, D)
+            shape=(..., D)
         """
         gain, offset = self.gain(edge_type), self.offset(edge_type)
-        d: torch.Tensor = gain * edge_distance + offset - self.mu # shape=(N, D)
+        d: torch.Tensor = gain * edge_distance + offset - self.mu # shape=(..., D)
         return d.div_(self.sigma).square_().exp_()
-        
+
+class EmbeddingBlock(nn.Module):
+    def __init__(self, atom_embed_dim, input_dim, B, D):
+        super().__init__()
+        self.weighting = nn.Sequential(
+            nn.Linear(atom_embed_dim, B),
+            nn.Softmax(dim=-1),
+            nn.Unflatten(-1, (1, B))
+        )
+        self.multiExpert = nn.Sequential(
+            nn.Linear(input_dim, D),
+            nn.ReLU(),
+            nn.Linear(D, B * D),
+            nn.Unflatten(-1, (B, D))
+        )
+        self.fc = nn.Sequential(
+            nn.Flatten(-2, -1),
+            nn.Linear(D, D)
+        )
+    
+    def forward(self, atom_embed, input):
+        r"""
+        Args:
+            atom_embed: 用于边时是source和target的onehot embedding concat, shape=(..., atom_embed_dim)
+            input: shape=(..., input_dim)
+        Returns:
+            shape=(..., D)
+        """
+        weight = self.weighting(atom_embed)     # (..., 1, B)
+        variations = self.multiExpert(input)    # (..., B, D)
+        mixture = weight @ variations           # (..., 1, D)
+        return self.fc(mixture)                 # (..., D)
