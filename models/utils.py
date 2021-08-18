@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 
-# stolen from PyTorch3D
+# stolen from PyTorch3D, but for right multiplication
 def quaternion_to_matrix(quaternions):
     """
     Convert rotations given as quaternions to rotation matrices.
@@ -16,17 +16,32 @@ def quaternion_to_matrix(quaternions):
     r, i, j, k = torch.unbind(quaternions, -1)
     two_s = 2.0 / (quaternions * quaternions).sum(-1)
 
+    r11 = 1 - two_s * (j * j + k * k)
+    r12 = two_s * (i * j - k * r)
+    r13 = two_s * (i * k + j * r)
+    r21 = two_s * (i * j + k * r)
+    r22 = 1 - two_s * (i * i + k * k)
+    r23 = two_s * (j * k - i * r)
+    r31 = two_s * (i * k - j * r)
+    r32 = two_s * (j * k + i * r)
+    r33 = 1 - two_s * (i * i + j * j)
+
+    "for column vector, i.e. matrix @ vector"
+    # o = torch.stack(
+    #     (
+    #         r11, r12, r13,
+    #         r21, r22, r23,
+    #         r31, r32, r33,
+    #     ),
+    #     -1,
+    # )
+
+    "for row vector, i.e. vector @ matrix"
     o = torch.stack(
         (
-            1 - two_s * (j * j + k * k),
-            two_s * (i * j - k * r),
-            two_s * (i * k + j * r),
-            two_s * (i * j + k * r),
-            1 - two_s * (i * i + k * k),
-            two_s * (j * k - i * r),
-            two_s * (i * k - j * r),
-            two_s * (j * k + i * r),
-            1 - two_s * (i * i + j * j),
+            r11, r21, r31,
+            r12, r22, r32,
+            r13, r23, r33,
         ),
         -1,
     )
@@ -81,15 +96,30 @@ def axis_angle_to_matrix(axis_angle):
     return quaternion_to_matrix(axis_angle_to_quaternion(axis_angle))
 
 
-def matrix_to_z(target: torch.Tensor):
-    target_unit = F.normalize(target, p=2, dim=-1)
-    z_unit = torch.zeros_like(target).index_fill_(dim=-1, index=torch.tensor([2]), value=1)
-    
-    axis = F.normalize(torch.cross(target_unit, z_unit, dim=-1), p=2, dim=-1)
-    angle = target_unit[..., 2].acos()
-    return axis_angle_to_matrix(axis * angle)
+def rotation_to_z(target: torch.Tensor):
+    """
+    Compute right multiplication rotation matrices which rotate target vectors to z-axis
+    i.e. target @ ret_mat along z axis
+    Args:
+        target: tensor of shape (..., 3)
+    Returns:
+        Rotation matrices as tensor of shape (..., 3, 3).
+    """
+    target_unit = F.normalize(target, p=2, dim=-1)  # (..., 3)
+    z_unit = torch.tensor([0, 0, 1], dtype=target_unit.dtype).expand(target_unit.shape)  # (..., 3)
+
+    axis = F.normalize(torch.cross(target_unit, z_unit, dim=-1), p=2, dim=-1)  # (..., 3)
+    angle = target_unit[..., -1:].acos()  # (..., 1)
+    return axis_angle_to_matrix(axis * angle)  # (..., 3, 3)
+
+
+def repeat_tuple(value, n: int):
+    return (value, ) * n
+
 
 if __name__ == '__main__':
-    x = torch.tensor([1.0, 2.0, 3.0])
-    m = matrix_to_z(x)
-    print(m@x[..., None])
+    pass
+    x = torch.tensor([[[2, 3, 3]] * 3] * 2, dtype=torch.float32)
+    # x = torch.tensor([2, 3, 3], dtype=torch.float32)
+    m = rotation_to_z(x)
+    print(x.unsqueeze(-2)@m)
