@@ -105,7 +105,7 @@ class GridSpinConv(nn.Module):
         per_st_grid_sampe_matrix_flat = self.get_grid_sample_matrix(per_st_edge_unit_local)  # (..., |E| + e_pad, cutoff_num_threshold, phi*theta)
 
         per_target_edge_message_t = torch.gather(
-            input=edge_message.unsqueeze(-1).expand(*repeat_tuple(-1, edge_unit.dim()), cutoff_num_threshold),  # (..., |E| + e_pad, M, cutoff_num_threshold)
+            input=edge_message.unsqueeze(-1).expand(*repeat_tuple(-1, edge_message.dim()), cutoff_num_threshold),  # (..., |E| + e_pad, M, cutoff_num_threshold)
             dim=-3,  # dim of |E| + e_pad
             index=target_edge_index.unsqueeze(-2).expand(*repeat_tuple(-1, target_edge_index.dim() - 1), self.M, -1)  # (..., |V| + v_pad, M, cutoff_num_threshold)
         )  # (..., |V| + v_pad, M, cutoff_num_threshold)
