@@ -116,6 +116,7 @@ class GridSpinConv(nn.Module):
 
         out_flat: torch.Tensor = self.filter(per_edge_grid_N_Mphi_theta) # (N, D)
         out = out_flat.unflatten(0, edge_message.shape[:-1]) # (..., D)
+        return out
         
 
     def get_grid_sample_matrix(self, edge_unit: torch.Tensor):
