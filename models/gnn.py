@@ -39,7 +39,7 @@ class SpinConvNet(nn.Module):
         """
         super().__init__()
         self.spin_sonv = GridSpinConv(phi, theta, M, D)
-        self.distance_block = DistanceBlock(delta, D, sigma, edge_types=atom_types*atom_types)
+        self.distance_block = DistanceBlock(delta, D, sigma, edge_types=atom_types*atom_types+atom_types) # 有atom_types种实际不存在的边
         self.init_fc = nn.Linear(D, D)
         self.message_fc = nn.Linear(D, D)
 
@@ -67,7 +67,7 @@ class SpinConvNet(nn.Module):
         eps = 1e-12
         edge_distance: torch.Tensor = torch.linalg.norm(edge, dim=-1, keepdim=True)  # (..., |E| + e_pad, 1)
         edge_unit = edge / (edge_distance + eps)  # (..., |E| + e_pad, 3)
-        edge_type = source_type * self.atom_types + target_type
+        edge_type = source_type + target_type * self.atom_types
         distance_repr_raw = self.distance_block(edge_type, edge_distance)  # (..., |E| + e_pad, D)
         distance_repr_init = self.init_fc(distance_repr_raw)  # (..., |E| + e_pad, D)
         distance_repr_message = self.message_fc(distance_repr_raw)  # (..., |E| + e_pad, D)
@@ -80,6 +80,8 @@ class SpinConvNet(nn.Module):
         )
         message_init = self.init_emb(edge_atom_embed, distance_repr_init)  # (..., |E| + e_pad, M)
         message: torch.Tensor = message_init
+
+        # K iteration of message update
         for _ in range(self.K):
             spin_conv_raw = self.spin_sonv(
                 target_edge_index,
