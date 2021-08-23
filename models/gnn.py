@@ -54,6 +54,7 @@ class SpinConvNet(nn.Module):
                 target_edge_index: torch.LongTensor,
                 edge_source_index: torch.LongTensor,
                 edge: torch.Tensor,
+                edge_distance: torch.Tensor,
                 source_type: torch.LongTensor,
                 target_type: torch.LongTensor,
                 ):
@@ -61,13 +62,13 @@ class SpinConvNet(nn.Module):
         target_edge_index: 每一个target atom对应的入边集合的index序列，入边数量不足时用e_pad范围内的index占位，shape=(..., |V| + v_pad, cutoff_num_threshold)
         edge_source_index: 每一条边的source atom index, shape=(..., |E| + e_pad)
         edge: 边向量 (..., |E| + e_pad, 3)
+        edge_distance: (..., |E| + e_pad, 1)
         source_type: 边起点原子类型 (..., |E| + e_pad)
         target_type: 边终点原子类型 (..., |E| + e_pad)
         """
         eps = 1e-12
-        edge_distance: torch.Tensor = torch.linalg.norm(edge, dim=-1, keepdim=True)  # (..., |E| + e_pad, 1)
         edge_unit = edge / (edge_distance + eps)  # (..., |E| + e_pad, 3)
-        edge_type = source_type + target_type * self.atom_types
+        edge_type = source_type * self.atom_types + target_type
         distance_repr_raw = self.distance_block(edge_type, edge_distance)  # (..., |E| + e_pad, D)
         distance_repr_init = self.init_fc(distance_repr_raw)  # (..., |E| + e_pad, D)
         distance_repr_message = self.message_fc(distance_repr_raw)  # (..., |E| + e_pad, D)
